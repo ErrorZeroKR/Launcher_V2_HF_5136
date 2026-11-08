@@ -9,16 +9,16 @@ namespace ExcData
 	{
 		public static Dictionary<string, byte> speedNames = new Dictionary<string, byte>
 		{
-			{ "标准", 7 },
-			{ "慢速S0", 3 },
-			{ "普通S1", 0 },
-			{ "快速S2", 1 },
-			{ "高速S3", 2 },
-			{ "复古初级&S1", 10 },
-			{ "复古L3&S2", 11 },
-			{ "复古L2", 12 },
-			{ "复古L1&S3", 13 },
-			{ "复古Pro", 14 }
+			{ "표준", 7 },
+			{ "보통 S0", 3 },
+			{ "빠름 S1", 0 },
+			{ "매우 빠름 S2", 1 },
+			{ "가장 빠름 S3", 2 },
+			{ "레트로 초급&S1", 10 },
+			{ "레트로 L3&S2", 11 },
+			{ "레트로 L2", 12 },
+			{ "레트로 L1&S3", 13 },
+			{ "레트로 Pro", 14 }
 		};
 
 		public static float AddSpec_TransAccelFactor = 0f;

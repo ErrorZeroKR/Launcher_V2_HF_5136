@@ -41,7 +41,7 @@ namespace KartRider
 			this.button1.Name = "button1";
 			this.button1.Size = new System.Drawing.Size(64, 50);
 			this.button1.TabIndex = 0;
-			this.button1.Text = "添加";
+			this.button1.Text = "추가";
 			this.button1.UseVisualStyleBackColor = true;
 			this.button1.Click += new System.EventHandler(this.button1_Click);
 			// 
@@ -74,7 +74,7 @@ namespace KartRider
 			this.label1.Name = "label1";
 			this.label1.Size = new System.Drawing.Size(35, 12);
 			this.label1.TabIndex = 362;
-			this.label1.Text = "类型:";
+			this.label1.Text = "유형:";
 			// 
 			// label2
 			// 
@@ -83,7 +83,7 @@ namespace KartRider
 			this.label2.Name = "label2";
 			this.label2.Size = new System.Drawing.Size(35, 12);
 			this.label2.TabIndex = 363;
-			this.label2.Text = "代码:";
+			this.label2.Text = "코드:";
 			// 
 			// GetKart
 			// 
@@ -95,17 +95,18 @@ namespace KartRider
 			this.Controls.Add(this.tx_ItemCode);
 			this.Controls.Add(this.tx_ItemType);
 			this.Controls.Add(this.button1);
-			this.Font = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 134);
+			this.Font = new System.Drawing.Font("맑은 고딕", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 129);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
 			this.Icon = Resources.Icon;
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "GetKart";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-			this.Text = "添加道具";
+			this.Text = "아이템 추가";
 			this.Load += new System.EventHandler(this.FormItem_Load);
 			this.ResumeLayout(false);
 			this.PerformLayout();
+			UiTheme.Apply(this);
 		}
 
 		protected override void Dispose(bool disposing)
@@ -117,73 +118,90 @@ namespace KartRider
 			base.Dispose(disposing);
 		}
 
+		/// <summary>
+		/// 접속 중인 게임에 아이템을 지급 (type = 아이템 분류 ID, code = 아이템 ID).
+		/// 이 창의 '추가'와 새 아이템 선택 창이 함께 사용.
+		/// </summary>
+		public static void SendItem(short type, short code)
+		{
+			if (!GameLink.IsConnected())
+			{
+				Console.WriteLine("[런처] 게임이 접속해 있어야 아이템을 추가할 수 있어요");
+				return;
+			}
+			GetKart.Item_Type = type;
+			GetKart.Item_Code = code;
+			Console.WriteLine("[런처] 아이템 추가 요청: 분류 {0}, ID {1}", type, code);
+			short sn = 0, previous_sn;
+			if (GetKart.Item_Type == 3)
+			{
+				if (File.Exists(@"Profile\NewKart.xml"))
+				{
+					XmlDocument doc = new XmlDocument();
+					doc.Load(@"Profile\NewKart.xml");
+					XmlNodeList lis = doc.SelectNodes("//Kart[@id='" + GetKart.Item_Code + "']");
+					foreach (XmlNode xn in lis)
+					{
+						XmlElement xe = (XmlElement)xn;
+						previous_sn = sn;
+						sn = short.Parse(xe.GetAttribute("sn"));
+						if (previous_sn > sn) sn = previous_sn;
+					}
+					XmlElement newElement = doc.CreateElement("Kart");
+					newElement.SetAttribute("id", GetKart.Item_Code.ToString());
+					sn += 1;
+					newElement.SetAttribute("sn", sn.ToString());
+					XmlElement NewKart = doc.DocumentElement;
+					NewKart.AppendChild(newElement);
+					doc.Save(@"Profile\NewKart.xml");
+				}
+				Console.WriteLine("NewKart: {0}:{1}", GetKart.Item_Code, sn);
+				KartExcData.AddPartsList(GetKart.Item_Code, sn, 63, 0, 0, 0);
+				using (OutPacket outPacket = new OutPacket("PrRequestKartInfoPacket"))
+				{
+					outPacket.WriteByte(1);
+					outPacket.WriteInt(1);
+					outPacket.WriteShort(GetKart.Item_Type);
+					outPacket.WriteShort(GetKart.Item_Code);
+					outPacket.WriteShort(sn);
+					outPacket.WriteShort(1);//수량
+					outPacket.WriteShort(0);
+					outPacket.WriteShort(-1);
+					outPacket.WriteShort(0);
+					outPacket.WriteShort(0);
+					outPacket.WriteShort(0);
+					RouterListener.MySession.Client.Send(outPacket);
+				}
+			}
+			else
+			{
+				using (OutPacket outPacket = new OutPacket("PrRequestKartInfoPacket"))
+				{
+					outPacket.WriteByte(1);
+					outPacket.WriteInt(1);
+					outPacket.WriteShort(GetKart.Item_Type);
+					outPacket.WriteShort(GetKart.Item_Code);
+					outPacket.WriteUShort(0);
+					outPacket.WriteShort(1);//수량
+					outPacket.WriteShort(0);
+					outPacket.WriteShort(-1);
+					outPacket.WriteShort(0);
+					outPacket.WriteShort(0);
+					outPacket.WriteShort(0);
+					RouterListener.MySession.Client.Send(outPacket);
+				}
+			}
+		}
+
 		private void button1_Click(object sender, EventArgs e)
 		{
-			GetKart.Item_Type = short.Parse(this.tx_ItemType.Text);
-			GetKart.Item_Code = short.Parse(this.tx_ItemCode.Text);
+			short type = short.Parse(this.tx_ItemType.Text);
+			short code = short.Parse(this.tx_ItemCode.Text);
 			(new Thread(() =>
 			{
 				button1.Enabled = false;
 				Thread.Sleep(300);
-				short sn = 0, previous_sn;
-				if (GetKart.Item_Type == 3)
-				{
-					if (File.Exists(@"Profile\NewKart.xml"))
-					{
-						XmlDocument doc = new XmlDocument();
-						doc.Load(@"Profile\NewKart.xml");
-						XmlNodeList lis = doc.SelectNodes("//Kart[@id='" + GetKart.Item_Code + "']");
-						foreach (XmlNode xn in lis)
-						{
-							XmlElement xe = (XmlElement)xn;
-							previous_sn = sn;
-							sn = short.Parse(xe.GetAttribute("sn"));
-							if (previous_sn > sn) sn = previous_sn;
-						}
-						XmlElement newElement = doc.CreateElement("Kart");
-						newElement.SetAttribute("id", GetKart.Item_Code.ToString());
-						sn += 1;
-						newElement.SetAttribute("sn", sn.ToString());
-						XmlElement NewKart = doc.DocumentElement;
-						NewKart.AppendChild(newElement);
-						doc.Save(@"Profile\NewKart.xml");
-					}
-					Console.WriteLine("NewKart: {0}:{1}", GetKart.Item_Code, sn);
-					KartExcData.AddPartsList(GetKart.Item_Code, sn, 63, 0, 0, 0);
-					using (OutPacket outPacket = new OutPacket("PrRequestKartInfoPacket"))
-					{
-						outPacket.WriteByte(1);
-						outPacket.WriteInt(1);
-						outPacket.WriteShort(GetKart.Item_Type);
-						outPacket.WriteShort(GetKart.Item_Code);
-						outPacket.WriteShort(sn);
-						outPacket.WriteShort(1);//수량
-						outPacket.WriteShort(0);
-						outPacket.WriteShort(-1);
-						outPacket.WriteShort(0);
-						outPacket.WriteShort(0);
-						outPacket.WriteShort(0);
-						RouterListener.MySession.Client.Send(outPacket);
-					}
-				}
-				else
-				{
-					using (OutPacket outPacket = new OutPacket("PrRequestKartInfoPacket"))
-					{
-						outPacket.WriteByte(1);
-						outPacket.WriteInt(1);
-						outPacket.WriteShort(GetKart.Item_Type);
-						outPacket.WriteShort(GetKart.Item_Code);
-						outPacket.WriteUShort(0);
-						outPacket.WriteShort(1);//수량
-						outPacket.WriteShort(0);
-						outPacket.WriteShort(-1);
-						outPacket.WriteShort(0);
-						outPacket.WriteShort(0);
-						outPacket.WriteShort(0);
-						RouterListener.MySession.Client.Send(outPacket);
-					}
-				}
+				SendItem(type, code);
 				Thread.Sleep(300);
 				button1.Enabled = true;
 			})).Start();

@@ -124,21 +124,21 @@ namespace RiderData
 					List<string> Name = uniqueNames.ToList();
 					using (OutPacket outPacket = new OutPacket("PrFavoriteTrackMapGet"))
 					{
-						outPacket.WriteInt(Name.Count); //主题数量
+						outPacket.WriteInt(Name.Count); //테마 수
 						for (int i = 0; i < Name.Count; i++)
 						{
 							if (!(doc.GetElementsByTagName(Name[i]) == null))
 							{
 								XmlNodeList lis = doc.GetElementsByTagName(Name[i]);
 								string theme = Name[i].Replace("theme", "");
-								outPacket.WriteInt(int.Parse(theme)); //主题代码
-								outPacket.WriteInt(lis.Count); //赛道数量
+								outPacket.WriteInt(int.Parse(theme)); //테마 코드
+								outPacket.WriteInt(lis.Count); //트랙 수
 								foreach (XmlNode xn in lis)
 								{
 									XmlElement xe = (XmlElement)xn;
 									int track = int.Parse(xe.GetAttribute("track"));
-									outPacket.WriteShort(short.Parse(theme)); //主题代码
-									outPacket.WriteInt(track); //赛道代码
+									outPacket.WriteShort(short.Parse(theme)); //테마 코드
+									outPacket.WriteInt(track); //트랙 코드
 									outPacket.WriteByte(0);
 								}
 							}

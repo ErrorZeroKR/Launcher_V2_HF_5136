@@ -28,17 +28,17 @@ namespace KartRider
 			Console.WriteLine("SpeedType: {0}, Kart_id: {1}, FlyingPet_id: {2}", StartGameData.StartTimeAttack_SpeedType, StartGameData.Kart_id, StartGameData.FlyingPet_id);
 			if (GameType.StartType == 1)
 			{
-				Console.WriteLine("故事模式");
+				Console.WriteLine("스토리 모드");
 				StartGameData.PrKartSpec();
 			}
 			else if (GameType.StartType == 2)
 			{
-				Console.WriteLine("挑战者");
+				Console.WriteLine("챌린저");
 				StartGameData.PrchallengerKartSpec();
 			}
 			else if (GameType.StartType == 3)
 			{
-				Console.WriteLine("排行计时");
+				Console.WriteLine("랭킹 타임어택");
 				if (StartGameData.StartTimeAttack_StartType == 0)
 				{
 					StartGameData.PrStartTimeAttack();

@@ -17,8 +17,11 @@ namespace KartRider
 		}
 
 		[STAThread]
-		private static void Main()
+		private static void Main(string[] args)
 		{
+			LauncherSettings.Load();
+			AppLog.Init(args);
+			Application.SetHighDpiMode(HighDpiMode.SystemAware);
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(false);
 			Launcher StartLauncher = new Launcher();

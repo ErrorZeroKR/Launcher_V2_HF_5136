@@ -17,7 +17,7 @@ namespace ExcData
 
 		public static void Tune_ExcData()
 		{
-			int range = 100;//分批次数
+			int range = 100;//분할 전송 단위(개수)
 			int times = TuneList.Count / range + (TuneList.Count % range > 0 ? 1 : 0);
 			for (int i = 0; i < times; i++)
 			{
@@ -66,7 +66,7 @@ namespace ExcData
 
 		public static void Plant_ExcData()
 		{
-			int range = 100;//分批次数
+			int range = 100;//분할 전송 단위(개수)
 			int times = PlantList.Count / range + (PlantList.Count % range > 0 ? 1 : 0);
 			for (int i = 0; i < times; i++)
 			{
@@ -114,7 +114,7 @@ namespace ExcData
 
 		public static void Level_ExcData()
 		{
-			int range = 100;//分批次数
+			int range = 100;//분할 전송 단위(개수)
 			int times = LevelList.Count / range + (LevelList.Count % range > 0 ? 1 : 0);
 			for (int i = 0; i < times; i++)
 			{
@@ -160,7 +160,7 @@ namespace ExcData
 
 		public static void Parts_ExcData()
 		{
-			int range = 100;//分批次数
+			int range = 100;//분할 전송 단위(개수)
 			int times = PartsList.Count / range + (PartsList.Count % range > 0 ? 1 : 0);
 			for (int i = 0; i < times; i++)
 			{

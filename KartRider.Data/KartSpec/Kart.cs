@@ -1,9 +1,22 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Xml;
 
 namespace KartRider
 {
+	public class KartTable
+	{
+		public string Name { get; set; }
+		public byte grade { get; set; }
+		public List<short> defaultEnchant { get; set; } = new List<short>();
+	}
+
 	public class Kart
 	{
+		// 게임 파일(aaa.pk)에서 읽어 온 카트 이름/스펙 (Rho.cs 에서 채움)
+		public static Dictionary<int, KartTable> kartName = new Dictionary<int, KartTable>();
+		public static Dictionary<string, XmlDocument> kartSpec = new Dictionary<string, XmlDocument>();
+
 		public static float AirFriction;
 		public static float AnimalBoosterTime;
 		public static float antiCollideBalance;

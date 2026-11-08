@@ -30,6 +30,7 @@ namespace KartRider
 
 		public override void OnDisconnect()
 		{
+			Console.WriteLine("[서버] 클라이언트 연결 종료");
 			this.Parent.Client.Disconnect();
 		}
 
@@ -61,6 +62,7 @@ namespace KartRider
 			{
 				iPacket.Position = 0;
 				uint hash = iPacket.ReadUInt();
+				PacketLog.Received(iPacket);
 				if (hash == Adler32Helper.GenerateAdler32_ASCII("PqCnAuthenLogin", 0))
 				{
 					using (OutPacket outPacket = new OutPacket("PrCnAuthenLogin"))
@@ -1189,12 +1191,12 @@ namespace KartRider
 					else if (hash == Adler32Helper.GenerateAdler32_ASCII("PqFavoriteTrackUpdate", 0))
 					{
 						iPacket.ReadByte();
-						int tracks = iPacket.ReadInt(); //赛道数量
+						int tracks = iPacket.ReadInt(); //트랙 수
 						for (int i = 0; i < tracks; i++)
 						{
-							short theme = iPacket.ReadShort(); //主题代码
-							int track = iPacket.ReadInt(); //赛道代码
-							byte Add_Del = iPacket.ReadByte(); //1添加，2删除
+							short theme = iPacket.ReadShort(); //테마 코드
+							int track = iPacket.ReadInt(); //트랙 코드
+							byte Add_Del = iPacket.ReadByte(); //1 추가, 2 삭제
 							if (Add_Del == 1)
 							{
 								FavoriteItem.Favorite_Track_Add(theme, track);

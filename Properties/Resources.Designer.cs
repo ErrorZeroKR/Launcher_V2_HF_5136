@@ -61,19 +61,6 @@ namespace Launcher.Properties {
         }
         
         /// <summary>
-        ///   查找类似 &lt;?xml version=&apos;1.0&apos; encoding=&apos;utf-8&apos;?&gt;
-        ///&lt;FlyingPetSpec&gt;
-        ///	&lt;id1 DragFactor=&apos;0&apos; ForwardAccelForce=&apos;0&apos; DriftEscapeForce=&apos;0&apos; CornerDrawFactor=&apos;0&apos; NormalBoosterTime=&apos;0&apos; ItemBoosterTime=&apos;0&apos; TeamBoosterTime=&apos;0&apos; StartForwardAccelForceItem=&apos;800&apos; StartForwardAccelForceSpeed=&apos;800&apos; /&gt;
-        ///	&lt;id2 DragFactor=&apos;0&apos; ForwardAccelForce=&apos;0&apos; DriftEscapeForce=&apos;0&apos; CornerDrawFactor=&apos;0&apos; NormalBoosterTime=&apos;0&apos; ItemBoosterTime=&apos;0&apos; TeamBoosterTime=&apos;0&apos; StartForwardAccelForceItem=&apos;800&apos; StartForwardAccelForceSpeed=&apos;800&apos; /&gt;
-        ///	&lt;id3 DragFactor=&apos;0&apos; Fo [字符串的其余部分被截断]&quot;; 的本地化字符串。
-        /// </summary>
-        public static string FlyingPetSpec {
-            get {
-                return ResourceManager.GetString("FlyingPetSpec", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   查找类似于 (图标) 的 System.Drawing.Icon 类型的本地化资源。
         /// </summary>
         public static System.Drawing.Icon Icon {
@@ -113,17 +100,6 @@ namespace Launcher.Properties {
         public static string Item {
             get {
                 return ResourceManager.GetString("Item", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   查找类似 &lt;?xml version=&apos;1.0&apos; encoding=&apos;utf-8&apos;?&gt;
-        ///&lt;KartSpec&gt;
-        ///	&lt;id0 draftMulAccelFactor=&apos;1.1&apos; draftTick=&apos;2000&apos; driftBoostMulAccelFactor=&apos;1.4&apos; driftBoostTick=&apos;500&apos; chargeBoostBySpeed=&apos;350&apos; SpeedSlotCapacity=&apos;2&apos; ItemSlotCapacity=&apos;2&apos; SpecialSlotCapacity=&apos;1&apos; UseTransformBooster=&apos;1&apos; motorcycleType=&apos;0&apos; BikeRearWheel=&apos;1&apos; Mass=&apos;100&apos; AirFriction=&apos;3&apos; DragFactor=&apos;0.667&apos; ForwardAccelForce=&apos;2304&apos; BackwardAccelForce=&apos;1825&apos; GripBrakeForce=&apos;2070&apos; SlipBrakeForce=&apos;1415&apos; MaxSteerAngle=&apos;10&apos; SteerConstraint=&apos;24.61&apos; FrontGripFactor=&apos;5&apos; Rear [字符串的其余部分被截断]&quot;; 的本地化字符串。
-        /// </summary>
-        public static string KartSpec {
-            get {
-                return ResourceManager.GetString("KartSpec", resourceCulture);
             }
         }
         

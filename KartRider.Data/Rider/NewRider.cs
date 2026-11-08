@@ -12,6 +12,9 @@ namespace RiderData
 {
 	public static class NewRider
 	{
+		// 게임 파일(상점 item.kml)에서 읽은 아이템: itemCatId -> itemId -> 이름 (V2와 동일)
+		public static Dictionary<ushort, Dictionary<ushort, string>> items = new Dictionary<ushort, Dictionary<ushort, string>>();
+
 		public static void LoadItemData()
 		{
 			KartExcData.Tune_ExcData();
@@ -1476,7 +1479,7 @@ namespace RiderData
 
 		public static void LoRpGetRiderItemPacket(short itemCat, List<List<short>> item)
 		{
-			int range = 100;//分批次数
+			int range = 100;//분할 전송 단위(개수)
 			int times = item.Count / range + (item.Count % range > 0 ? 1 : 0);
 			for (int i = 0; i < times; i++)
 			{
