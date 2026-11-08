@@ -14,7 +14,7 @@ namespace KartRider
         public const string Version = "1.0.0";
 
         /// <summary>내부 빌드 표시 (로그 첫머리에 출력되어, 어떤 빌드가 실행 중인지 확인용)</summary>
-        public const string Build = "r36";
+        public const string Build = "r39";
 
         /// <summary>실행 파일의 빌드(수정) 시각</summary>
         public static string BuildTime

@@ -41,6 +41,7 @@ namespace KartRider
         private readonly Font idFont = UiTheme.UiFont(8F);   // 분류 버튼 오른쪽의 ID 표시용
         private ImageList catSizer, itemSizer;               // 목록 줄 높이를 정하는 이미지 목록 (크기만 사용)
         private Panel leftHost, itemsHost;                   // 목록을 담는 영역 (목록 높이를 줄 수 × 줄 높이로 직접 정함)
+        private Panel catClip, itemsClip;                    // 목록의 기본 스크롤바가 잘려 나가도록 목록을 감싸는 패널
         private Button btnManual, btnManualAdd;
         private ThemedScrollBar catBar, itemBar;             // 목록 옆의 슬림 스크롤바 (런처 디자인)
         private System.Windows.Forms.Timer barTimer;         // 목록 스크롤 위치를 스크롤바에 반영
@@ -157,7 +158,10 @@ namespace KartRider
             lvCat.SelectedIndexChanged += (s, e) => FillItems();
             lvCat.SizeChanged += (s, e) => FitColumns();
             lvCat.ClientSizeChanged += (s, e) => FitColumns();   // 세로 스크롤바가 생기거나 사라져 폭이 달라질 때도 열 너비를 다시 맞춤
-            left.Controls.Add(lvCat);
+            catClip = new Panel();
+            catClip.BackColor = lvCat.BackColor;
+            catClip.Controls.Add(lvCat);
+            left.Controls.Add(catClip);
             catBar = new ThemedScrollBar(true);
             left.Controls.Add(catBar);
             catBar.Scrolled += (s, e) => ScrollListTo(lvCat, catSizer, catBar.Value);
@@ -177,7 +181,10 @@ namespace KartRider
             lvItems.Columns.Add("ID", 80);
             lvItems.Columns.Add("이름", 300);
             lvItems.Dock = DockStyle.None;
-            itemsHost.Controls.Add(lvItems);
+            itemsClip = new Panel();
+            itemsClip.BackColor = lvItems.BackColor;
+            itemsClip.Controls.Add(lvItems);
+            itemsHost.Controls.Add(itemsClip);
             itemBar = new ThemedScrollBar(true);
             itemsHost.Controls.Add(itemBar);
             itemBar.Scrolled += (s, e) => ScrollListTo(lvItems, itemSizer, itemBar.Value);
@@ -283,7 +290,7 @@ namespace KartRider
 
         private static ListView MakeList(bool multi)
         {
-            var lv = new ThemedListView();
+            var lv = new ListView();
             lv.View = View.Details;
             lv.FullRowSelect = true;
             lv.HideSelection = false;
@@ -303,9 +310,9 @@ namespace KartRider
         /// 그래서 목록 높이를 (보이는 줄 수 × 줄 높이 + 여유 4px)로 직접 정하고, 줄 높이는 그 높이에 맞게 조절함.
         /// 남는 높이는 목록 밖(아래 여백)에 둠.
         /// </summary>
-        private static void LayoutList(Control host, ListView lv, ImageList sizer, int baseRow, ThemedScrollBar bar)
+        private static void LayoutList(Control host, Panel clip, ListView lv, ImageList sizer, int baseRow, ThemedScrollBar bar)
         {
-            if (host == null || lv == null || sizer == null || baseRow <= 0) return;
+            if (host == null || clip == null || lv == null || sizer == null || baseRow <= 0) return;
             int x = host.Padding.Left, y = host.Padding.Top;
             int w = Math.Max(0, host.ClientSize.Width - host.Padding.Horizontal);
             int h = host.ClientSize.Height - host.Padding.Vertical;
@@ -321,14 +328,18 @@ namespace KartRider
                 if (sizer.ImageSize.Height != rowH) sizer.ImageSize = new Size(1, rowH);
                 lh = n * rowH + 4;
             }
-            lv.SetBounds(x, y, lw, lh);
+            // 보이는 영역(clip)은 lw x lh. 목록은 기본 세로 스크롤바 폭만큼 오른쪽으로 더 넓게 두어서 스크롤바가 clip 밖으로 잘려 나가게 함
+            // (스크롤바를 코드로 숨기면 목록이 다시 보이게 하려고 되풀이하다 멈출 수 있어서, 가리는 방식을 씀)
+            int sbW = SystemInformation.VerticalScrollBarWidth + 6;
+            clip.SetBounds(x, y, lw, lh);
+            lv.SetBounds(0, 0, lw + sbW, lh);
             if (bar != null) bar.SetBounds(x + w - barW, y, barW, lh);
         }
 
         private void LayoutLists()
         {
-            LayoutList(leftHost, lvCat, catSizer, catBaseRow, catBar);
-            LayoutList(itemsHost, lvItems, itemSizer, itemBaseRow, itemBar);
+            LayoutList(leftHost, catClip, lvCat, catSizer, catBaseRow, catBar);
+            LayoutList(itemsHost, itemsClip, lvItems, itemSizer, itemBaseRow, itemBar);
         }
 
         // ---------- 목록 <-> 스크롤바 ----------
@@ -367,12 +378,14 @@ namespace KartRider
         {
             // 생성 도중(두 목록이 모두 만들어지기 전)에 크기 이벤트가 먼저 올 수 있음
             if (lvCat == null || lvItems == null) return;
-            if (lvCat.Columns.Count > 0) lvCat.Columns[0].Width = Math.Max(50, lvCat.ClientSize.Width - 2);
+            int catW = catClip != null ? catClip.ClientSize.Width : lvCat.ClientSize.Width;
+            int itemW = itemsClip != null ? itemsClip.ClientSize.Width : lvItems.ClientSize.Width;
+            if (lvCat.Columns.Count > 0) lvCat.Columns[0].Width = Math.Max(50, catW - 2);
             if (lvItems.Columns.Count > 1)
             {
-                int idW = Math.Max(60, (int)(lvItems.ClientSize.Width * 0.15));
+                int idW = Math.Max(60, (int)(itemW * 0.15));
                 lvItems.Columns[0].Width = idW;
-                lvItems.Columns[1].Width = Math.Max(80, lvItems.ClientSize.Width - idW - 2);
+                lvItems.Columns[1].Width = Math.Max(80, itemW - idW - 2);
             }
         }
 
@@ -401,13 +414,18 @@ namespace KartRider
 
         private static string Signature()
         {
-            int total = 0, cats = 0;
-            try
+            int total = 0, cats = 0, karts = 0, tags = 0;
+            lock (KartRhoFile.DataLock)
             {
-                foreach (Dictionary<ushort, string> c in new List<Dictionary<ushort, string>>(NewRider.items.Values)) { total += c.Count; cats++; }
+                try
+                {
+                    foreach (Dictionary<ushort, string> c in new List<Dictionary<ushort, string>>(NewRider.items.Values)) { total += c.Count; cats++; }
+                    karts = Kart.kartName.Count;
+                    tags = KartRhoFile.ItemTableTags.Count;
+                }
+                catch { }
             }
-            catch { }
-            return total + "/" + cats + "/" + Kart.kartName.Count + "/" + KartRhoFile.ItemTableTags.Count + "/" + KartRhoFile.LoadVersion;
+            return total + "/" + cats + "/" + karts + "/" + tags + "/" + KartRhoFile.LoadVersion;
         }
 
         public void FocusSearch()
@@ -418,24 +436,32 @@ namespace KartRider
         // ---------- 데이터 ----------
         private void LoadData()
         {
-            try
+            // 데이터를 읽는 스레드가 표를 채우는 중에 같이 읽지 않도록 잠금
+            lock (KartRhoFile.DataLock)
             {
-                foreach (KeyValuePair<ushort, Dictionary<ushort, string>> cat in new List<KeyValuePair<ushort, Dictionary<ushort, string>>>(NewRider.items))
+                try
                 {
-                    var sorted = new SortedDictionary<int, string>();
-                    foreach (KeyValuePair<ushort, string> it in new List<KeyValuePair<ushort, string>>(cat.Value)) sorted[it.Key] = it.Value;
-                    if (sorted.Count > 0) data[cat.Key] = sorted;
+                    foreach (KeyValuePair<ushort, Dictionary<ushort, string>> cat in new List<KeyValuePair<ushort, Dictionary<ushort, string>>>(NewRider.items))
+                    {
+                        var sorted = new SortedDictionary<int, string>();
+                        foreach (KeyValuePair<ushort, string> it in new List<KeyValuePair<ushort, string>>(cat.Value)) sorted[it.Key] = it.Value;
+                        if (sorted.Count > 0) data[cat.Key] = sorted;
+                    }
                 }
-            }
-            catch { }
+                catch { }
 
-            // 상점 데이터에 카트가 없으면, 인식한 카트 이름 표로 채움 (분류 3 = 카트)
-            if (!data.ContainsKey(3) && Kart.kartName.Count > 0)
-            {
-                var karts = new SortedDictionary<int, string>();
-                foreach (KeyValuePair<int, KartTable> k in new List<KeyValuePair<int, KartTable>>(Kart.kartName))
-                    karts[k.Key] = k.Value.Name;
-                if (karts.Count > 0) data[3] = karts;
+                // 카트(분류 3): 상점 목록에 없어도 게임 데이터 itemTable 에 있는 카트는 목록에 포함
+                // (DataRaw 에 직접 추가한 카트바디가 상점 목록에는 없어도 선택할 수 있도록)
+                if (Kart.kartName.Count > 0)
+                {
+                    SortedDictionary<int, string> karts;
+                    if (!data.TryGetValue(3, out karts)) { karts = new SortedDictionary<int, string>(); data[3] = karts; }
+                    foreach (KeyValuePair<int, KartTable> kv in new List<KeyValuePair<int, KartTable>>(Kart.kartName))
+                    {
+                        if (kv.Key <= 0 || kv.Key > short.MaxValue) continue;   // 아이템 ID 는 short 범위
+                        if (!karts.ContainsKey(kv.Key)) karts[kv.Key] = kv.Value != null ? kv.Value.Name : null;
+                    }
+                }
             }
 
             BuildCategoryNames();
@@ -717,7 +743,7 @@ namespace KartRider
         /// 비활성화되면 어두운 바탕 + 또렷한 회색 글자로 보이게 함.
         /// (기본 Flat 버튼은 비활성화 때 글자색 설정을 무시하고 아주 어두운 색으로 그려서 잘 안 보였음 -> 직접 그림)
         /// </summary>
-        private static void WireDisabledLook(Button b, bool primary)
+        internal static void WireDisabledLook(Button b, bool primary)
         {
             Action apply = () =>
             {

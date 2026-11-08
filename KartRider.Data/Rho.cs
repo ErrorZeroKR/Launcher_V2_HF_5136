@@ -110,6 +110,12 @@ namespace KartRider
         /// <summary>true: datapackOff 폴더에서 읽는 중 (화면 표시용)</summary>
         public static volatile bool FromFolder = false;
 
+        /// <summary>
+        /// 게임 데이터 표(Kart/FlyingPet/NewRider.items 등)를 읽고 쓰는 동안 잡는 잠금.
+        /// 읽기 스레드가 표를 채우는 중에 화면(아이템 추가 창)이나 패킷 처리가 같은 표를 읽으면 멈추거나 오류가 날 수 있어서 함께 사용.
+        /// </summary>
+        public static readonly object DataLock = new object();
+
         // 폴더 방식: 읽은 폴더와, 카트/펫 이름별 param 파일이 있던 폴더 (주행 시작 때 다시 읽기용)
         private static string rawRoot;
         private static readonly Dictionary<string, string> rawKartDirs = new Dictionary<string, string>();
@@ -122,7 +128,7 @@ namespace KartRider
             if (!File.Exists(xmlPath)) { note = "KartRider.xml 없음"; return null; }
             try
             {
-                XDocument doc = XDocument.Load(xmlPath);
+                XDocument doc = XDocument.Parse(ReadXmlText(xmlPath));
                 foreach (XElement el in doc.Descendants())
                 {
                     if (!string.Equals(el.Name.LocalName, "datapackOff", StringComparison.OrdinalIgnoreCase)) continue;
@@ -263,7 +269,7 @@ namespace KartRider
                     string lower = Path.GetFileName(file).ToLowerInvariant();
                     // 필요한 파일만 열어 봄 (카트/펫 param, itemTable, 상점·문서 파일)
                     if (!(lower.StartsWith("param") || lower.StartsWith("itemtable") || docFileNames.Contains(lower))) continue;
-                    try { HandleRawFile(root, file, paths, docKeys, kartParamPri); }
+                    try { lock (DataLock) { HandleRawFile(root, file, paths, docKeys, kartParamPri); } }
                     catch (Exception ex)
                     {
                         failCount++;
@@ -432,7 +438,7 @@ namespace KartRider
             XmlDocument doc = LoadXml(ReadAllBytesShared(file));
             XmlDocument old;
             string before = Kart.kartSpec.TryGetValue(name, out old) && old != null ? old.OuterXml : null;
-            Kart.kartSpec[name] = doc;
+            lock (DataLock) { Kart.kartSpec[name] = doc; }
             LogReload("카트", name, before, doc.OuterXml, Path.GetFileName(file));
         }
 
@@ -445,7 +451,7 @@ namespace KartRider
             XmlDocument doc = ParseDoc(file, ReadAllBytesShared(file));
             XmlDocument old;
             string before = FlyingPet.flyingSpec.TryGetValue(name, out old) && old != null ? old.OuterXml : null;
-            FlyingPet.flyingSpec[name] = doc;
+            lock (DataLock) { FlyingPet.flyingSpec[name] = doc; }
             LogReload("펫", name, before, doc.OuterXml, Path.GetFileName(file));
         }
 
@@ -526,6 +532,23 @@ namespace KartRider
             return ReadDatapackOffPath(Path.Combine(gameDir, "KartRider.xml"), out note) != null;
         }
 
+        /// <summary>
+        /// KartRider.xml 을 글자로 읽음. 파일 맨 위 선언이 encoding='UTF-16' 인데 실제로는 BOM 이 없거나 UTF-8 로 저장된 경우에도
+        /// 읽을 수 있게 직접 인코딩을 판별하고, 선언 줄은 제거함 (XDocument.Load 는 이런 파일에서 BOM 오류로 실패함)
+        /// </summary>
+        private static string ReadXmlText(string path)
+        {
+            byte[] raw = File.ReadAllBytes(path);
+            string text;
+            if (raw.Length >= 2 && raw[0] == 0xFF && raw[1] == 0xFE) text = Encoding.Unicode.GetString(raw, 2, raw.Length - 2);
+            else if (raw.Length >= 2 && raw[0] == 0xFE && raw[1] == 0xFF) text = Encoding.BigEndianUnicode.GetString(raw, 2, raw.Length - 2);
+            else if (raw.Length >= 2 && raw[0] == (byte)'<' && raw[1] == 0) text = Encoding.Unicode.GetString(raw);           // BOM 없는 UTF-16 LE
+            else if (raw.Length >= 2 && raw[0] == 0 && raw[1] == (byte)'<') text = Encoding.BigEndianUnicode.GetString(raw);   // BOM 없는 UTF-16 BE
+            else text = new UTF8Encoding(false).GetString(raw);
+            text = text.TrimStart('\uFEFF');
+            return System.Text.RegularExpressions.Regex.Replace(text, @"^\s*<\?xml[^>]*\?>", "");
+        }
+
         /// <summary>KartRider.xml 에 적힌 datapackOff 의 path (없으면 null)</summary>
         public static string GetDatapackOffPath(string gameDir)
         {
@@ -570,7 +593,9 @@ namespace KartRider
                 bool le = raw.Length >= 2 && raw[0] == 0xFF && raw[1] == 0xFE;
                 bool be = raw.Length >= 2 && raw[0] == 0xFE && raw[1] == 0xFF;
                 // UTF-16 이 아니면 Latin1 로 1:1 변환해서 편집 (UTF-8 한글 등 다른 바이트가 그대로 보존됨)
-                Encoding enc = le ? Encoding.Unicode : be ? Encoding.BigEndianUnicode : Encoding.Latin1;
+                bool leNoBom = !le && raw.Length >= 2 && raw[0] == (byte)'<' && raw[1] == 0;
+                bool beNoBom = !be && raw.Length >= 2 && raw[0] == 0 && raw[1] == (byte)'<';
+                Encoding enc = (le || leNoBom) ? Encoding.Unicode : (be || beNoBom) ? Encoding.BigEndianUnicode : Encoding.Latin1;
                 int skip = (le || be) ? 2 : 0;
                 string text = enc.GetString(raw, skip, raw.Length - skip);
 
@@ -588,9 +613,10 @@ namespace KartRider
                 if (enable)
                 {
                     string p = string.IsNullOrWhiteSpace(pathValue) ? RememberedPath() : pathValue.Trim();
+                    string pw = enc == Encoding.Latin1 ? Encoding.Latin1.GetString(Encoding.UTF8.GetBytes(p)) : p;   // 파일에 쓸 형태
                     if (found != null)
                     {
-                        string updated = WithPathAttr(found.Value, p);
+                        string updated = WithPathAttr(found.Value, pw);
                         if (updated == found.Value) { message = "KartRider.xml 의 datapackOff 가 이미 같은 폴더예요"; return true; }
                         newText = text.Remove(found.Index, found.Length).Insert(found.Index, updated);
                         message = "KartRider.xml 의 datapackOff path 를 '" + p + "' 로 바꿨어요";
@@ -599,7 +625,7 @@ namespace KartRider
                     {
                         string template = LauncherSettings.Current.DatapackOffElement;
                         if (string.IsNullOrWhiteSpace(template)) template = "<datapackOff path='DataRaw' checkRfl='false'/>";
-                        string element = WithPathAttr(template, p);
+                        string element = WithPathAttr(template, pw);
                         int close = text.LastIndexOf("</", StringComparison.Ordinal);
                         if (close < 0) { message = "KartRider.xml 형식을 알 수 없어 항목을 추가하지 못했어요"; return false; }
                         string nl = text.Contains("\r\n") ? "\r\n" : "\n";
@@ -655,15 +681,18 @@ namespace KartRider
             if (Status == "읽는 중") return false;
             GameDataSource src = ResolveSource(gameDir);
             Loaded = false;   // 다시 읽는 동안 주행 시작은 기본 성능으로 처리됨 (반쯤 읽힌 데이터를 쓰지 않도록)
-            Kart.kartName.Clear();
-            Kart.kartSpec.Clear();
-            FlyingPet.flyingName.Clear();
-            FlyingPet.flyingSpec.Clear();
-            NewRider.items.Clear();
-            ItemTableTags.Clear();
-            Docs.Clear();
-            rawKartDirs.Clear();
-            rawPetDirs.Clear();
+            lock (DataLock)
+            {
+                Kart.kartName.Clear();
+                Kart.kartSpec.Clear();
+                FlyingPet.flyingName.Clear();
+                FlyingPet.flyingSpec.Clear();
+                NewRider.items.Clear();
+                ItemTableTags.Clear();
+                Docs.Clear();
+                rawKartDirs.Clear();
+                rawPetDirs.Clear();
+            }
             LoadVersion++;
             Console.WriteLine("[Rho] 읽기 방식이 바뀌어 게임 데이터를 다시 읽어요");
             CurrentSource = src;
@@ -695,7 +724,7 @@ namespace KartRider
                     foreach (PackFileInfo f in folder.GetFilesInfo())
                     {
                         fileCount++;
-                        try { HandleFile(f, paths, kartParamPri); }
+                        try { lock (DataLock) { HandleFile(f, paths, kartParamPri); } }
                         catch (Exception ex)
                         {
                             failCount++;

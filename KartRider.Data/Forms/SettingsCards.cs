@@ -684,15 +684,26 @@ namespace KartRider
     public sealed class ExperimentCard : SettingsCard
     {
         private const string NormalDesc = "읽기만 하고 아직 사용은 안 함 · 바꾸면 바로 다시 읽어요";
-        private readonly ThemedCheckBox chkDocs;
+        private readonly ThemedCheckBox chkDocs, chkAuto;
         private readonly Label lblDesc;
 
-        public ExperimentCard() : base("실험 기능", "검증 중인 기능이에요. 필요할 때만 켜세요")
+        public ExperimentCard() : base("실험 기능", "검증 중인 기능들이에요. 문제가 생기면 꺼 보세요")
         {
+            chkAuto = AddCheck("새 아이템 자동 지급 (실험)", "게임 데이터에 새로 생긴 아이템을 인벤토리에 자동으로 추가해요 (이미 있으면 제외)");
+            LastDesc.Height = 32;   // 설명이 두 줄이라 한 줄 더 확보
+            y += 16;
             chkDocs = AddCheck("퀘스트·상점·이벤트 문서 읽기 (실험)", NormalDesc);
             lblDesc = LastDesc;
             Finish();
 
+            chkAuto.CheckedChanged += (s, e) =>
+            {
+                if (loading) return;
+                LauncherSettings.Current.AutoAddNewItems = chkAuto.Checked;
+                Touch();
+                if (chkAuto.Checked && KartRhoFile.Status == "완료")
+                    System.Threading.Tasks.Task.Run(() => AutoInventory.Run());   // 켠 직후에도 바로 확인
+            };
             chkDocs.CheckedChanged += (s, e) =>
             {
                 if (loading) return;
@@ -721,6 +732,7 @@ namespace KartRider
 
         protected override void LoadValues()
         {
+            chkAuto.Checked = LauncherSettings.Current.AutoAddNewItems;
             chkDocs.Checked = LauncherSettings.Current.LoadContentDocs;
             ShowDesc(NormalDesc, UiTheme.Muted);
         }

@@ -135,7 +135,7 @@ namespace KartRider
 			short sn = 0, previous_sn;
 			if (GetKart.Item_Type == 3)
 			{
-				if (File.Exists(@"Profile\NewKart.xml"))
+				lock (AutoInventory.FileLock) if (File.Exists(@"Profile\NewKart.xml"))
 				{
 					XmlDocument doc = new XmlDocument();
 					doc.Load(@"Profile\NewKart.xml");

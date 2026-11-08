@@ -241,6 +241,7 @@ namespace KartRider
 			GetKart_Button.Font = UiTheme.UiFont(10F);
 			GetKart_Button.Location = new Point(20, 14);
 			GetKart_Button.Click += GetKart_Button_Click;
+			ItemPicker.WireDisabledLook(GetKart_Button, false);   // 비활성화 때 글자가 또렷하게 보이도록
 
 			playButton = new PlayButton();
 			playButton.Size = new Size(190, 58);
@@ -355,6 +356,7 @@ namespace KartRider
 		{
 			if (modalActive && !modalLayer.Visible) modalActive = false;   // 카드가 안 보이는데 열린 상태로 남은 경우 복구
 			if (modalActive || modalLayer.Visible) return;                  // 열려 있거나 열리는/닫히는 중이면 무시
+			if (content == itemPicker && KartRhoFile.Status == "읽는 중") return;   // 게임 데이터를 읽는 중에는 열지 않음
 			try
 			{
 				modalActive = true;
@@ -708,11 +710,10 @@ namespace KartRider
 		private void UpdatePlayState()
 		{
 			if (playButton == null) return;
-			if (++procCheckTick >= 3)
-			{
-				procCheckTick = 0;
-				try { gameRunning = Process.GetProcessesByName("KartRider").Length != 0; } catch { }
-			}
+			gameRunning = GameLink.GameRunning;   // 프로세스 확인은 백그라운드에서 (화면 스레드를 막지 않음)
+			// 게임 데이터를 읽는 동안에는 아이템 추가도 막음 (읽는 중인 표를 동시에 읽지 않도록)
+			bool dataBusy = KartRhoFile.Status == "읽는 중";
+			if (GetKart_Button != null && GetKart_Button.Enabled == dataBusy) GetKart_Button.Enabled = !dataBusy;
 			string reason = PlayBlockReason();
 			playButton.Reason = reason;
 			bool canPlay = reason == null;
@@ -731,6 +732,7 @@ namespace KartRider
 			else if (st == "완료" && !dataShown)
 			{
 				dataShown = true;
+				System.Threading.Tasks.Task.Run(() => AutoInventory.Run());   // 게임 데이터에 새 아이템이 있으면 인벤토리에 자동 추가
 				int items = 0;
 				foreach (var v in RiderData.NewRider.items.Values) items += v.Count;
 				lblData.Text = "● 게임 데이터(" + DataSourceName() + "): 카트 " + Kart.kartName.Count + " · 펫 " + FlyingPet.flyingName.Count + " · 아이템 " + items;

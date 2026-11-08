@@ -13,17 +13,20 @@ namespace KartRider
     /// </summary>
     public static class GameLink
     {
-        private static long lastCheck;
-        private static bool lastRunning = true;
+        private static volatile bool lastRunning = false;
 
-        private static bool GameProcessRunning()
+        // KartRider 프로세스가 떠 있는지 1초마다 백그라운드에서 확인해 둠
+        // (화면 스레드에서 프로세스 목록을 조회하면 PC 에 따라 화면이 순간 멈추기 때문)
+        private static readonly System.Threading.Timer poll = new System.Threading.Timer(_ =>
         {
-            long now = Environment.TickCount64;
-            if (lastCheck != 0 && now - lastCheck < 500) return lastRunning;   // 너무 자주 확인하지 않음
-            lastCheck = now;
             try { lastRunning = Process.GetProcessesByName("KartRider").Length > 0; }
             catch { lastRunning = true; }   // 확인하지 못하면 세션 상태를 믿음
-            return lastRunning;
+        }, null, 0, 1000);
+
+        /// <summary>로컬 KartRider 프로세스가 실행 중인지 (최대 1초 전 기준)</summary>
+        public static bool GameRunning
+        {
+            get { return poll != null && lastRunning; }
         }
 
         public static bool IsConnected()
@@ -36,7 +39,7 @@ namespace KartRider
                 Socket s = g.Client.Socket;
                 if (s == null || !s.Connected) return false;
                 var remote = s.RemoteEndPoint as IPEndPoint;
-                if (remote != null && IPAddress.IsLoopback(remote.Address) && !GameProcessRunning()) return false;
+                if (remote != null && IPAddress.IsLoopback(remote.Address) && !GameRunning) return false;
                 return true;
             }
             catch { return false; }

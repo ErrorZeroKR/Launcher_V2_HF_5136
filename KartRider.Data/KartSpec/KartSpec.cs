@@ -148,9 +148,11 @@ namespace KartSpec
 		public static bool TryApplyGameData(int kartId)
 		{
 			if (!KartRhoFile.Loaded || kartId == 0) return false;
-			KartTable table;
-			XmlElement body;
-			if (!FindBody(kartId, out table, out body)) return false;
+			KartTable table = null;
+			XmlElement body = null;
+			bool found;
+			lock (KartRhoFile.DataLock) { found = FindBody(kartId, out table, out body); }
+			if (!found) return false;
 			ApplyBody(body);
 			string notes = ApplyStandardBase();
 			Console.WriteLine("[KartSpec] 게임 데이터 스펙 적용: id={0}, name={1} (표준 속도 기본값 보정 포함{2})", kartId, table.Name, notes);

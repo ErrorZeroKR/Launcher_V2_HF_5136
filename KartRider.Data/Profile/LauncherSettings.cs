@@ -26,6 +26,7 @@ namespace KartRider
 
         // 실험 기능 (아이템 인식 / 카트·펫 스펙은 항상 클라이언트 데이터를 읽으므로 더 이상 설정이 아님)
         public int SettingsVersion { get; set; } = 0;
+        public bool AutoAddNewItems { get; set; } = true;        // 게임 데이터에 새로 생긴 아이템을 인벤토리에 자동 추가
         public bool LoadContentDocs { get; set; } = false;       // 퀘스트·상점·이벤트 등 문서 읽기 (실험) [재시작 필요]
         public bool PinLog { get; set; } = false;                // 게임 시작 시 PIN 내용을 로그에 출력
 
